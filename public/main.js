@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
 import { Conversation } from '@elevenlabs/client';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 // --- CONFIG ---
 const ELEVENLABS_API_KEY = 'sk_23ecdb027f96e10b22b1b0d818aa39e8966c2fdb731feebf'; 
@@ -22,6 +23,11 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
+
+// Setup Environment for better materials
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
 container.appendChild(renderer.domElement);
 
 // Lighting for Presentation
