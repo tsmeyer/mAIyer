@@ -13,19 +13,41 @@ const ANIMS_GLB_PATH = 'animations.glb';
 // --- Scene ---
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111); // Add a subtle dark grey background
 const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.4, 2.2);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 container.appendChild(renderer.domElement);
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.7);
-scene.add(hemi);
-const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-dir.position.set(0.5, 1, 0.5);
-scene.add(dir);
+// Lighting for Presentation
+// Ambient light for base illumination
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+scene.add(ambientLight);
+
+// Key light (Directional)
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+keyLight.position.set(2, 2, 2);
+scene.add(keyLight);
+
+// Fill light (Directional from the other side)
+const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
+fillLight.position.set(-2, 1, 1);
+scene.add(fillLight);
+
+// Back light (Rim light to make avatar stand out)
+const rimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+rimLight.position.set(0, 2, -3);
+scene.add(rimLight);
+
+// Face probe light (makes eyes and teeth visible)
+const faceLight = new THREE.PointLight(0xffffff, 1.0, 5);
+faceLight.position.set(0, 1.5, 1);
+scene.add(faceLight);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
