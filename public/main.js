@@ -98,8 +98,20 @@ async function startConversation() {
 
     conversation = await Conversation.startSession({
       signedUrl,
-      onConnect: () => updateStatus('Connected'),
-      onDisconnect: () => updateStatus('Disconnected'),
+      onConnect: () => {
+        updateStatus('Connected');
+        const btn = document.getElementById('actionBtn');
+        if (btn) {
+          btn.textContent = 'Disconnect';
+          btn.style.display = 'block';
+        }
+      },
+      onDisconnect: () => {
+        updateStatus('Disconnected');
+        const btn = document.getElementById('actionBtn');
+        if (btn) btn.textContent = 'Reconnect';
+        isSpeaking = false;
+      },
       onError: (err) => {
         console.error('SDK Error:', err);
         updateStatus('Error encountered');
@@ -117,6 +129,17 @@ async function startConversation() {
     console.error('Failed to start session:', err);
     updateStatus('Failed to connect');
   }
+}
+
+const actionBtn = document.getElementById('actionBtn');
+if (actionBtn) {
+  actionBtn.addEventListener('click', async () => {
+    if (conversation && conversation.status === 'connected') {
+      await conversation.endSession();
+    } else {
+      await startConversation();
+    }
+  });
 }
 
 const startMainBtn = document.getElementById('startMain');
