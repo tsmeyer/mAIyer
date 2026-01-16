@@ -120,7 +120,8 @@ async function startConversation() {
     
     // Auth for prototype
     const baseUrl = 'wss://api.elevenlabs.io/v1/convai/conversation';
-    const params = new URLSearchParams({ agent_id: AGENT_ID });
+    const params = new URLSearchParams({ agent_id: AGENT_ID,
+                                include_alignment_metadata: true  });
     if (ELEVENLABS_API_KEY) params.set('api_key', ELEVENLABS_API_KEY);
     const signedUrl = `${baseUrl}?${params.toString()}`;
 
