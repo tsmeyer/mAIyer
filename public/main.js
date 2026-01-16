@@ -82,7 +82,11 @@ const visemeQueue = [];
 const VISEME_MAP = {
   'a': 'viseme_aa', 'e': 'viseme_ee', 'i': 'viseme_ih', 'o': 'viseme_oh', 'u': 'viseme_ou',
   'm': 'viseme_PP', 'p': 'viseme_PP', 'b': 'viseme_PP',
-  'f': 'viseme_FF', 'v': 'viseme_FF', 't': 'viseme_DD', 'd': 'viseme_DD'
+  'f': 'viseme_FF', 'v': 'viseme_FF',
+  't': 'viseme_DD', 'd': 'viseme_DD', 's': 'viseme_DD', 'z': 'viseme_DD',
+  'n': 'viseme_DD', 'l': 'viseme_DD', 'r': 'viseme_DD',
+  'k': 'viseme_kk', 'g': 'viseme_kk', 'h': 'viseme_kk',
+  'j': 'viseme_ch', 's': 'viseme_ch'
 };
 
 // Blink State
@@ -255,38 +259,54 @@ function animate() {
 
   // --- Lip-sync Logic (High Fidelity) ---
   const now = performance.now();
-  let currentViseme = null;
-
-  // Clear past visemes and find the current one
-  while (visemeQueue.length > 0 && visemeQueue[0].time < now - 100) {
+  
+  // Clean up the queue
+  while (visemeQueue.length > 0 && visemeQueue[0].time + (visemeQueue[0].duration || 50) < now) {
     visemeQueue.shift();
   }
-  if (visemeQueue.length > 0 && Math.abs(visemeQueue[0].time - now) < 100) {
-    currentViseme = visemeQueue[0];
+
+  // Find the viseme intended for RIGHT NOW
+  let currentViseme = null;
+  if (visemeQueue.length > 0) {
+    // If we are within the start time window
+    if (now >= visemeQueue[0].time) {
+      currentViseme = visemeQueue[0];
+    }
   }
 
-  // Determine target opening
   let targetOpen = 0;
-  let targetViseme = 'viseme_aa';
+  let targetViseme = null;
 
   if (currentViseme) {
-    targetOpen = 0.5; // Moderate opening for specific characters
+    targetOpen = 0.5; 
     targetViseme = VISEME_MAP[currentViseme.char] || 'viseme_aa';
   } else if (isSpeaking) {
-    // FALLBACK: Generic jitter if no alignment data is currently "playing"
-    targetOpen = 0.15 + (Math.abs(Math.sin(now * 0.02)) * 0.2);
+    // FALLBACK: If no alignment data is currently "active" but we know we are speaking
+    targetOpen = 0.1 + (Math.abs(Math.sin(now * 0.02)) * 0.2);
+    targetViseme = 'viseme_aa';
   }
 
   // Smoothly interpolate talkValue toward the target
-  talkValue = THREE.MathUtils.lerp(talkValue, targetOpen, delta * 15);
+  talkValue = THREE.MathUtils.lerp(talkValue, targetOpen, delta * 20);
 
-  // Reset all visemes first
-  ['viseme_aa', 'viseme_ih', 'viseme_ou', 'viseme_ee', 'viseme_oh', 'viseme_PP', 'viseme_FF', 'viseme_DD'].forEach(v => setMorphValue(v, 0));
+  // Reset ALL viseme morphs to 0 before applying the active one
+  const allVisemes = [
+    'viseme_aa', 'viseme_ee', 'viseme_ih', 'viseme_oh', 'viseme_ou', 
+    'viseme_PP', 'viseme_FF', 'viseme_DD', 'viseme_kk', 'viseme_ch'
+  ];
+  allVisemes.forEach(v => setMorphValue(v, 0));
 
-  // Apply movement to Jaw + Teeth (heavy) and Lips (subtle)
-  setMorphValue('jawOpen', talkValue);
-  setMorphValue('mouthOpen', talkValue * 0.4);
-  if (isSpeaking) setMorphValue(targetViseme, talkValue * 0.6);
+  // Apply movement
+  if (talkValue > 0.01) {
+    setMorphValue('jawOpen', talkValue);
+    setMorphValue('mouthOpen', talkValue * 0.4);
+    if (targetViseme) {
+      setMorphValue(targetViseme, talkValue * 0.7);
+    }
+  } else {
+    setMorphValue('jawOpen', 0);
+    setMorphValue('mouthOpen', 0);
+  }
 
   renderer.render(scene, camera);
 }
