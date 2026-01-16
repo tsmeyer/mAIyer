@@ -76,6 +76,7 @@ const morphRegistry = new Map();
 let conversation = null;
 let isSpeaking = false;
 let talkValue = 0;
+let lastVolume = 0; // Track volume for smoothing
 
 // Blink State
 let blinkTimer = 0;
@@ -83,10 +84,14 @@ let nextBlinkTime = 2 + Math.random() * 3;
 let blinkValue = 0;
 
 function setMorphValue(name, value) {
-  const entry = morphRegistry.get(name);
-  if (!entry) return;
-  const { mesh, index } = entry;
-  if (mesh.morphTargetInfluences) mesh.morphTargetInfluences[index] = value;
+  const entries = morphRegistry.get(name);
+  if (!entries) return;
+  // Apply to ALL meshes that share this morph name
+  for (const { mesh, index } of entries) {
+    if (mesh.morphTargetInfluences) {
+      mesh.morphTargetInfluences[index] = value;
+    }
+  }
 }
 
 async function loadAvatarAndAnims() {
@@ -99,7 +104,10 @@ async function loadAvatarAndAnims() {
     if (o.isMesh && o.morphTargetDictionary) {
       const dict = o.morphTargetDictionary;
       for (const [name, index] of Object.entries(dict)) {
-        if (!morphRegistry.has(name)) morphRegistry.set(name, { mesh: o, index });
+        if (!morphRegistry.has(name)) {
+          morphRegistry.set(name, []);
+        }
+        morphRegistry.get(name).push({ mesh: o, index });
       }
     }
   });
@@ -151,8 +159,12 @@ async function startConversation() {
         updateStatus('Error encountered');
       },
       onModeChange: ({ mode }) => {
+        console.log('AI MODE CHANGE:', mode);
         isSpeaking = (mode === 'speaking');
         updateStatus(mode === 'speaking' ? 'Assistant speaking' : 'Listening');
+        
+        // Immediate test bump to see if mouth moves at all
+        if (isSpeaking) talkValue = 0.5;
       },
       onAudioAlignment: (alignment) => {
         console.log('Alignment data:', alignment);
@@ -205,44 +217,38 @@ function animate() {
   // --- Auto-Blink Logic ---
   blinkTimer += delta;
   if (blinkTimer > nextBlinkTime) {
-    // 0.2s duration for a blink
     const blinkDuration = 0.15;
     const timeInBlink = blinkTimer - nextBlinkTime;
-    
     if (timeInBlink < blinkDuration) {
-      // Use a sine wave to smooth the blink (open -> closed -> open)
       blinkValue = Math.sin((timeInBlink / blinkDuration) * Math.PI);
     } else {
-      // Blink finished
       blinkValue = 0;
       blinkTimer = 0;
-      nextBlinkTime = 2 + Math.random() * 5; // Blink every 2-7 seconds
+      nextBlinkTime = 2 + Math.random() * 5;
     }
   }
   setMorphValue('eyeBlinkLeft', blinkValue);
   setMorphValue('eyeBlinkRight', blinkValue);
-  // Fallbacks if named differently in shader
-  setMorphValue('Blink', blinkValue);
-  setMorphValue('vrm_blink', blinkValue);
 
   // --- Lip-sync Logic ---
-  // Base oscillation for talk movement (fallback)
-  const baseTalk = isSpeaking ? (Math.abs(Math.sin(performance.now() * 0.015)) * 0.25) : 0;
-  
+  // If speaking, we use a more energetic but limited range.
   if (isSpeaking) {
-    // Decay the "bump" from alignments, but stay above baseTalk
-    talkValue = Math.max(baseTalk, talkValue - delta * 10);
+    // FALLBACK: If alignments never arrive, oscillate between 0.1 and 0.35
+    const fallback = 0.1 + Math.abs(Math.sin(performance.now() * 0.015)) * 0.25;
+    
+    // Smooth the transition from the "bump" down to the fallback
+    talkValue = Math.max(fallback, talkValue - delta * 8);
   } else {
-    // Smoothly close when finished
+    // Smoothly close when not speaking
     talkValue = Math.max(0, talkValue - delta * 15);
   }
   
-  // Set the shapes with careful intensity scaling to prevent "screaming"
-  // jawOpen usually moves the teeth + bone
-  setMorphValue('jawOpen', talkValue * 0.8); 
-  setMorphValue('mouthOpen', talkValue * 0.6);
-  setMorphValue('viseme_aa', talkValue * 0.3);
-  setMorphValue('vrm_a', talkValue * 0.5);
+  // Apply the movement. 
+  // jawOpen is the "heavy" movement (teeth + bone). 0.5 is a natural max.
+  setMorphValue('jawOpen', talkValue); 
+  // mouthOpen/visemes provide subtle lip stretching
+  setMorphValue('mouthOpen', talkValue * 0.3);
+  setMorphValue('viseme_aa', talkValue * 0.2);
 
   renderer.render(scene, camera);
 }
