@@ -166,19 +166,21 @@ async function startConversation() {
         // Immediate test bump to see if mouth moves at all
         if (isSpeaking) talkValue = 0.5;
       },
+      onDebug: (debug) => {
+        // This will log every internal event from the ElevenLabs SDK
+        console.log('SDK DEBUG:', debug);
+      },
       onAudioAlignment: (alignment) => {
-        console.log('Alignment data:', alignment);
-        console.log(isSpeaking)
-        // This confirms if eleven is sending the data
+        // High-level log to see if this fires AT ALL
+        console.log('>>> ALIGNMENT DATA RECEIVED:', alignment);
+        
         if (alignment && alignment.chars) {
-          console.log('--- ALIGNMENT DATA DETECTED ---');
-          console.log('Words:', alignment.chars.join(''));
-          // Moderate syllable bump
-          if (isSpeaking) talkValue = 0.45; 
+          talkValue = 0.45; 
         }
       },
-      onMessage: ({ message, source }) => {
-        console.log(`[${source}] ${message}`);
+      onMessage: (msg) => {
+        // Log the full message object to see if alignments are hidden inside
+        console.log('FULL MESSAGE OBJECT:', msg);
       }
     });
 
