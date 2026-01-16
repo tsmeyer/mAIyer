@@ -155,11 +155,12 @@ async function startConversation() {
         updateStatus(mode === 'speaking' ? 'Assistant speaking' : 'Listening');
       },
       onAudioAlignment: (alignment) => {
-        // Alignment data contains char-level timing. 
-        if (alignment && isSpeaking) {
-          console.log('Alignment received:', alignment.chars.join(''));
-          // Moderate bump - 0.8 was way too much
-          talkValue = 0.5; 
+        // This confirms if eleven is sending the data
+        if (alignment && alignment.chars) {
+          console.log('--- ALIGNMENT DATA DETECTED ---');
+          console.log('Words:', alignment.chars.join(''));
+          // Moderate syllable bump
+          if (isSpeaking) talkValue = 0.45; 
         }
       },
       onMessage: ({ message, source }) => {
@@ -223,19 +224,23 @@ function animate() {
   setMorphValue('vrm_blink', blinkValue);
 
   // --- Lip-sync Logic ---
-  // We use a smaller list to avoid "double-opening" (jaw + mouth at once)
+  // Base oscillation for talk movement (fallback)
+  const baseTalk = isSpeaking ? (Math.abs(Math.sin(performance.now() * 0.015)) * 0.25) : 0;
+  
   if (isSpeaking) {
-    // Basic decay logic
-    talkValue = Math.max(0, talkValue - delta * 10);
+    // Decay the "bump" from alignments, but stay above baseTalk
+    talkValue = Math.max(baseTalk, talkValue - delta * 10);
   } else {
+    // Smoothly close when finished
     talkValue = Math.max(0, talkValue - delta * 15);
   }
   
-  // Set the primary opening shapes
-  setMorphValue('mouthOpen', talkValue);
-  setMorphValue('jawOpen', talkValue); // Moves the teeth usually
-  setMorphValue('viseme_aa', talkValue * 0.5); // Add a bit of vowel shape, but not full force
-  setMorphValue('vrm_a', talkValue);
+  // Set the shapes with careful intensity scaling to prevent "screaming"
+  // jawOpen usually moves the teeth + bone
+  setMorphValue('jawOpen', talkValue * 0.8); 
+  setMorphValue('mouthOpen', talkValue * 0.6);
+  setMorphValue('viseme_aa', talkValue * 0.3);
+  setMorphValue('vrm_a', talkValue * 0.5);
 
   renderer.render(scene, camera);
 }
