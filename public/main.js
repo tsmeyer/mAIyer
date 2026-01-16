@@ -76,7 +76,14 @@ const morphRegistry = new Map();
 let conversation = null;
 let isSpeaking = false;
 let talkValue = 0;
-let lastVolume = 0; // Track volume for smoothing
+
+// High-Fidelity Lip Sync State
+const visemeQueue = [];
+const VISEME_MAP = {
+  'a': 'viseme_aa', 'e': 'viseme_ee', 'i': 'viseme_ih', 'o': 'viseme_oh', 'u': 'viseme_ou',
+  'm': 'viseme_PP', 'p': 'viseme_PP', 'b': 'viseme_PP',
+  'f': 'viseme_FF', 'v': 'viseme_FF', 't': 'viseme_DD', 'd': 'viseme_DD'
+};
 
 // Blink State
 let blinkTimer = 0;
@@ -159,28 +166,42 @@ async function startConversation() {
         updateStatus('Error encountered');
       },
       onModeChange: ({ mode }) => {
-        console.log('AI MODE CHANGE:', mode);
         isSpeaking = (mode === 'speaking');
         updateStatus(mode === 'speaking' ? 'Assistant speaking' : 'Listening');
-        
-        // Immediate test bump to see if mouth moves at all
-        if (isSpeaking) talkValue = 0.5;
-      },
-      onDebug: (debug) => {
-        // This will log every internal event from the ElevenLabs SDK
-        console.log('SDK DEBUG:', debug);
-      },
-      onAudioAlignment: (alignment) => {
-        // High-level log to see if this fires AT ALL
-        console.log('>>> ALIGNMENT DATA RECEIVED:', alignment);
-        
-        if (alignment && alignment.chars) {
-          talkValue = 0.45; 
+        if (!isSpeaking) {
+          visemeQueue.length = 0; // Clear queue when stopped
         }
       },
+      onAudioAlignment: (alignment) => {
+        if (!alignment || !alignment.chars) return;
+        
+        console.log('>>> ALIGNMENT DATA RECEIVED:', alignment.chars.join(''));
+        
+        // Offset everything by current time + a small buffer for network/audio latency
+        const startTime = performance.now() + 100; 
+        
+        alignment.chars.forEach((char, i) => {
+          visemeQueue.push({
+            char: char.toLowerCase(),
+            time: startTime + alignment.charStartTimesMs[i],
+            duration: alignment.charDurationsMs[i]
+          });
+        });
+      },
       onMessage: (msg) => {
-        // Log the full message object to see if alignments are hidden inside
-        console.log('FULL MESSAGE OBJECT:', msg);
+        // Fallback: If SDK doesn't trigger onAudioAlignment, we check raw message
+        if (msg.type === 'audio_alignment' && msg.alignment) {
+          console.log('MANUAL ALIGNMENT CAPTURE:', msg.alignment);
+          const alignment = msg.alignment;
+          const startTime = performance.now() + 100;
+          alignment.chars.forEach((char, i) => {
+            visemeQueue.push({
+              char: char.toLowerCase(),
+              time: startTime + alignment.char_start_times_ms[i],
+              duration: alignment.char_durations_ms[i]
+            });
+          });
+        }
       }
     });
 
@@ -232,25 +253,40 @@ function animate() {
   setMorphValue('eyeBlinkLeft', blinkValue);
   setMorphValue('eyeBlinkRight', blinkValue);
 
-  // --- Lip-sync Logic ---
-  // If speaking, we use a more energetic but limited range.
-  if (isSpeaking) {
-    // FALLBACK: If alignments never arrive, oscillate between 0.1 and 0.35
-    const fallback = 0.1 + Math.abs(Math.sin(performance.now() * 0.015)) * 0.25;
-    
-    // Smooth the transition from the "bump" down to the fallback
-    talkValue = Math.max(fallback, talkValue - delta * 8);
-  } else {
-    // Smoothly close when not speaking
-    talkValue = Math.max(0, talkValue - delta * 15);
+  // --- Lip-sync Logic (High Fidelity) ---
+  const now = performance.now();
+  let currentViseme = null;
+
+  // Clear past visemes and find the current one
+  while (visemeQueue.length > 0 && visemeQueue[0].time < now - 100) {
+    visemeQueue.shift();
   }
-  
-  // Apply the movement. 
-  // jawOpen is the "heavy" movement (teeth + bone). 0.5 is a natural max.
-  setMorphValue('jawOpen', talkValue); 
-  // mouthOpen/visemes provide subtle lip stretching
-  setMorphValue('mouthOpen', talkValue * 0.3);
-  setMorphValue('viseme_aa', talkValue * 0.2);
+  if (visemeQueue.length > 0 && Math.abs(visemeQueue[0].time - now) < 100) {
+    currentViseme = visemeQueue[0];
+  }
+
+  // Determine target opening
+  let targetOpen = 0;
+  let targetViseme = 'viseme_aa';
+
+  if (currentViseme) {
+    targetOpen = 0.5; // Moderate opening for specific characters
+    targetViseme = VISEME_MAP[currentViseme.char] || 'viseme_aa';
+  } else if (isSpeaking) {
+    // FALLBACK: Generic jitter if no alignment data is currently "playing"
+    targetOpen = 0.15 + (Math.abs(Math.sin(now * 0.02)) * 0.2);
+  }
+
+  // Smoothly interpolate talkValue toward the target
+  talkValue = THREE.MathUtils.lerp(talkValue, targetOpen, delta * 15);
+
+  // Reset all visemes first
+  ['viseme_aa', 'viseme_ih', 'viseme_ou', 'viseme_ee', 'viseme_oh', 'viseme_PP', 'viseme_FF', 'viseme_DD'].forEach(v => setMorphValue(v, 0));
+
+  // Apply movement to Jaw + Teeth (heavy) and Lips (subtle)
+  setMorphValue('jawOpen', talkValue);
+  setMorphValue('mouthOpen', talkValue * 0.4);
+  if (isSpeaking) setMorphValue(targetViseme, talkValue * 0.6);
 
   renderer.render(scene, camera);
 }
