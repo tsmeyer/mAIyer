@@ -155,6 +155,8 @@ async function startConversation() {
         updateStatus(mode === 'speaking' ? 'Assistant speaking' : 'Listening');
       },
       onAudioAlignment: (alignment) => {
+        console.log('Alignment data:', alignment);
+        console.log(isSpeaking)
         // This confirms if eleven is sending the data
         if (alignment && alignment.chars) {
           console.log('--- ALIGNMENT DATA DETECTED ---');
