@@ -156,8 +156,11 @@ async function startConversation() {
       },
       onAudioAlignment: (alignment) => {
         // Alignment data contains char-level timing. 
-        // For now, let's just use it to "bump" the mouth open slightly more naturally when a new character starts
-        if (isSpeaking) talkValue = 0.8;
+        if (alignment && isSpeaking) {
+          console.log('Alignment received:', alignment.chars.join(''));
+          // Moderate bump - 0.8 was way too much
+          talkValue = 0.5; 
+        }
       },
       onMessage: ({ message, source }) => {
         console.log(`[${source}] ${message}`);
@@ -220,15 +223,19 @@ function animate() {
   setMorphValue('vrm_blink', blinkValue);
 
   // --- Lip-sync Logic ---
-  const openNames = ['viseme_aa', 'v_aa', 'aa', 'MouthOpen', 'A', 'vrm_a'];
+  // We use a smaller list to avoid "double-opening" (jaw + mouth at once)
   if (isSpeaking) {
-    // If we have alignment data, talkValue is "bumped" in the callback.
-    // We add a bit of noise/variation here so it doesn't just stay static
-    talkValue = Math.max(0.2, talkValue - delta * 5) + (Math.random() * 0.1);
-  } else {
+    // Basic decay logic
     talkValue = Math.max(0, talkValue - delta * 10);
+  } else {
+    talkValue = Math.max(0, talkValue - delta * 15);
   }
-  for (const name of openNames) setMorphValue(name, talkValue);
+  
+  // Set the primary opening shapes
+  setMorphValue('mouthOpen', talkValue);
+  setMorphValue('jawOpen', talkValue); // Moves the teeth usually
+  setMorphValue('viseme_aa', talkValue * 0.5); // Add a bit of vowel shape, but not full force
+  setMorphValue('vrm_a', talkValue);
 
   renderer.render(scene, camera);
 }
