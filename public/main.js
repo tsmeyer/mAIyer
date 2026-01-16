@@ -77,6 +77,11 @@ let conversation = null;
 let isSpeaking = false;
 let talkValue = 0;
 
+// Blink State
+let blinkTimer = 0;
+let nextBlinkTime = 2 + Math.random() * 3; 
+let blinkValue = 0;
+
 function setMorphValue(name, value) {
   const entry = morphRegistry.get(name);
   if (!entry) return;
@@ -149,6 +154,11 @@ async function startConversation() {
         isSpeaking = (mode === 'speaking');
         updateStatus(mode === 'speaking' ? 'Assistant speaking' : 'Listening');
       },
+      onAudioAlignment: (alignment) => {
+        // Alignment data contains char-level timing. 
+        // For now, let's just use it to "bump" the mouth open slightly more naturally when a new character starts
+        if (isSpeaking) talkValue = 0.8;
+      },
       onMessage: ({ message, source }) => {
         console.log(`[${source}] ${message}`);
       }
@@ -186,10 +196,35 @@ function animate() {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
 
-  // Simple procedural lip-sync
+  // --- Auto-Blink Logic ---
+  blinkTimer += delta;
+  if (blinkTimer > nextBlinkTime) {
+    // 0.2s duration for a blink
+    const blinkDuration = 0.15;
+    const timeInBlink = blinkTimer - nextBlinkTime;
+    
+    if (timeInBlink < blinkDuration) {
+      // Use a sine wave to smooth the blink (open -> closed -> open)
+      blinkValue = Math.sin((timeInBlink / blinkDuration) * Math.PI);
+    } else {
+      // Blink finished
+      blinkValue = 0;
+      blinkTimer = 0;
+      nextBlinkTime = 2 + Math.random() * 5; // Blink every 2-7 seconds
+    }
+  }
+  setMorphValue('eyeBlinkLeft', blinkValue);
+  setMorphValue('eyeBlinkRight', blinkValue);
+  // Fallbacks if named differently in shader
+  setMorphValue('Blink', blinkValue);
+  setMorphValue('vrm_blink', blinkValue);
+
+  // --- Lip-sync Logic ---
   const openNames = ['viseme_aa', 'v_aa', 'aa', 'MouthOpen', 'A', 'vrm_a'];
   if (isSpeaking) {
-    talkValue = Math.abs(Math.sin(performance.now() * 0.015)) * 0.7;
+    // If we have alignment data, talkValue is "bumped" in the callback.
+    // We add a bit of noise/variation here so it doesn't just stay static
+    talkValue = Math.max(0.2, talkValue - delta * 5) + (Math.random() * 0.1);
   } else {
     talkValue = Math.max(0, talkValue - delta * 10);
   }
