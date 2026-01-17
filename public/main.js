@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { VRMLoaderPlugin } from '@pixiv/three-vrm';
 import { Conversation } from '@elevenlabs/client';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- CONFIG ---
 const ELEVENLABS_API_KEY = 'sk_23ecdb027f96e10b22b1b0d818aa39e8966c2fdb731feebf'; 
@@ -14,7 +15,7 @@ const ANIMS_GLB_PATH = 'animations.glb';
 // --- Scene ---
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111); // Add a subtle dark grey background
+
 const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.4, 2.2);
 
@@ -23,6 +24,14 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
+
+// Mouse Controls for Rotation
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableZoom = false; // Keep current zoom
+controls.enablePan = false;  // Keep focus centered
+controls.enableDamping = true;
+controls.target.set(0, 1.4, 0); // Rotate around the face/upper body
+controls.update();
 
 // Setup Environment for better materials
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -276,6 +285,7 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
+  if (controls) controls.update();
 
   // --- Auto-Blink Logic ---
   blinkTimer += delta;
