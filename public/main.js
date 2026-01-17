@@ -121,6 +121,13 @@ window.addEventListener('keydown', async (e) => {
       await conversation.sendUserMessage("Please respond in Mandarin from now on.");
     } catch (e) { console.error('Language switch error:', e); }
   }
+
+  if (e.key.toLowerCase() === 'e') {
+    updateStatus('Switching to English...');
+    try {
+      await conversation.sendUserMessage("Please respond in English from now on.");
+    } catch (e) { console.error('Language switch error:', e); }
+  }
 });
 
 function setMorphValue(name, value) {
