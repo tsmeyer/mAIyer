@@ -18,11 +18,12 @@
     <style>
       html,body{height:100%;margin:0;background:#111;color:#fff;font-family:Inter,Arial}
       #canvas-container{position:fixed;inset:0}
-      #overlay{position:fixed;left:12px;top:12px;z-index:20}
+      #overlay{position:fixed;left:20px;top:20px;z-index:20}
+      .app-title{font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.5)}
       .btn{background:#0ea5a4;border:none;padding:10px 16px;border-radius:8px;color:#012;cursor:pointer;font-weight:600}
-      .status{margin-top:8px;font-size:13px;color:#cbd5e1}
+      .status{margin-top:8px;font-size:13px;color:#cbd5e1;text-transform:uppercase;letter-spacing:1px;font-weight:500}
       #startOverlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30}
-      #startOverlay .card{background:rgba(0,0,0,0.6);padding:28px;border-radius:12px;text-align:center}
+      #startOverlay .card{background:rgba(0,0,0,0.6);padding:28px;border-radius:12px;text-align:center;backdrop-filter:blur(8px)}
       a.small{display:block;margin-top:8px;color:#9ae6b4;font-size:13px}
     </style>
   </head>
@@ -30,6 +31,7 @@
     <div id="canvas-container"></div>
 
     <div id="overlay">
+      <div class="app-title">Mr. mAIyer</div>
       <button id="actionBtn" class="btn" style="display:none">Disconnect</button>
       <div id="status" class="status">Idle</div>
     </div>
