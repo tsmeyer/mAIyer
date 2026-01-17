@@ -102,36 +102,24 @@ window.addEventListener('keydown', async (e) => {
     e.preventDefault();
     isMuted = !isMuted;
     try {
-      if (isMuted) {
-        await conversation.setMute({ mute: true });
-        updateStatus('Muted');
-      } else {
-        await conversation.setMute({ mute: false });
-        updateStatus('Unmuted');
-      }
+      await conversation.setMicMuted(isMuted);
+      updateStatus(isMuted ? 'Muted' : 'Unmuted');
     } catch (err) { console.error('Mute error:', err); }
   }
 
   // Language Shortcuts
   if (e.key.toLowerCase() === 's') {
     updateStatus('Switching to Spanish...');
-    // ElevenLabs ConvAI supports multi-language. Sending a text message via the socket 
-    // is a valid way to steer the agent if the underlying platform supports it.
-    // For the managed SDK, we can use conversation.sendText() if it exists.
     try {
-      if (conversation.sendText) {
-        conversation.sendText("Please respond in Spanish from now on.");
-      }
-    } catch (e) {}
+      await conversation.sendUserMessage("Please respond in Spanish from now on.");
+    } catch (e) { console.error('Language switch error:', e); }
   }
 
   if (e.key.toLowerCase() === 'm') {
     updateStatus('Switching to Mandarin...');
     try {
-      if (conversation.sendText) {
-        conversation.sendText("Please respond in Mandarin from now on.");
-      }
-    } catch (e) {}
+      await conversation.sendUserMessage("Please respond in Mandarin from now on.");
+    } catch (e) { console.error('Language switch error:', e); }
   }
 });
 
