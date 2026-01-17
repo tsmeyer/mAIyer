@@ -76,6 +76,7 @@ const morphRegistry = new Map();
 let conversation = null;
 let isSpeaking = false;
 let talkValue = 0;
+let isMuted = false;
 
 // High-Fidelity Lip Sync State
 const visemeQueue = [];
@@ -93,6 +94,46 @@ const VISEME_MAP = {
 let blinkTimer = 0;
 let nextBlinkTime = 2 + Math.random() * 3; 
 let blinkValue = 0;
+
+window.addEventListener('keydown', async (e) => {
+  if (!conversation) return;
+
+  if (e.code === 'Space') {
+    e.preventDefault();
+    isMuted = !isMuted;
+    try {
+      if (isMuted) {
+        await conversation.setMute({ mute: true });
+        updateStatus('Muted');
+      } else {
+        await conversation.setMute({ mute: false });
+        updateStatus('Unmuted');
+      }
+    } catch (err) { console.error('Mute error:', err); }
+  }
+
+  // Language Shortcuts
+  if (e.key.toLowerCase() === 's') {
+    updateStatus('Switching to Spanish...');
+    // ElevenLabs ConvAI supports multi-language. Sending a text message via the socket 
+    // is a valid way to steer the agent if the underlying platform supports it.
+    // For the managed SDK, we can use conversation.sendText() if it exists.
+    try {
+      if (conversation.sendText) {
+        conversation.sendText("Please respond in Spanish from now on.");
+      }
+    } catch (e) {}
+  }
+
+  if (e.key.toLowerCase() === 'm') {
+    updateStatus('Switching to Mandarin...');
+    try {
+      if (conversation.sendText) {
+        conversation.sendText("Please respond in Mandarin from now on.");
+      }
+    } catch (e) {}
+  }
+});
 
 function setMorphValue(name, value) {
   const entries = morphRegistry.get(name);
