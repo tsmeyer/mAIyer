@@ -191,11 +191,13 @@ async function startConversation() {
   try {
     updateStatus('Connecting...');
     
-    // BACK TO LOCAL SETUP: Use API key directly to skip permission issues
+    // BACK TO LOCAL SETUP: Use API key and Agent ID directly
     const API_KEY = 'sk_23ecdb027f96e10b22b1b0d818aa39e8966c2fdb731feebf';
+    const AGENT_ID = 'agent_6301kf03t1b2f7e8dtte5dawdask';
 
     conversation = await Conversation.startSession({
-      apiKey: API_KEY, // Use apiKey directly instead of signedUrl
+      apiKey: API_KEY,
+      agentId: AGENT_ID,
       onConnect: () => {
         updateStatus('Connected');
         const btn = document.getElementById('actionBtn');

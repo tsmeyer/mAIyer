@@ -9,7 +9,8 @@ const PORT = 8080;
 app.use(express.static(path.join(process.cwd(), 'public')));
 
 // Fallback to index.html for all other routes
-app.get('*', (req, res) => {
+// In Express 5, use app.use to catch all remaining requests
+app.use((req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
 
