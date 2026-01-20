@@ -184,6 +184,12 @@ function updateStatus(txt) {
 }
 
 async function startConversation() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    updateStatus('Secure context required');
+    alert('Microphone access requires a secure context (HTTPS or localhost). Please ensure you are accessing the site via http://localhost:8080 or https://');
+    return;
+  }
+
   try {
     updateStatus('Connecting...');
     
