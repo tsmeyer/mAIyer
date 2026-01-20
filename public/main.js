@@ -76,6 +76,8 @@ loader.register((parser) => new VRMLoaderPlugin(parser));
 
 let vrm = null;
 let mixer = null;
+let actions = {}; // Stores all animation actions
+let currentAction = null;
 const clock = new THREE.Clock();
 const morphRegistry = new Map();
 
@@ -101,6 +103,10 @@ const VISEME_MAP = {
 let blinkTimer = 0;
 let nextBlinkTime = 2 + Math.random() * 3; 
 let blinkValue = 0;
+
+// Idle Variation State
+let idleTimer = 0;
+let nextIdleVariation = 10 + Math.random() * 10; 
 
 window.addEventListener('keydown', async (e) => {
   if (!conversation) return;
@@ -135,6 +141,13 @@ window.addEventListener('keydown', async (e) => {
       await conversation.sendUserMessage("Please respond in English from now on.");
     } catch (e) { console.error('Language switch error:', e); }
   }
+
+  // Animation Hotkeys
+  if (e.key === '1') playAction('idle');
+  if (e.key === '2') playAction('watch');
+  if (e.key === '3') playAction('success');
+  if (e.key === '4') playAction('frustrated');
+  if (e.key === '5') playAction('dance');
 });
 
 function setMorphValue(name, value) {
@@ -146,6 +159,19 @@ function setMorphValue(name, value) {
       mesh.morphTargetInfluences[index] = value;
     }
   }
+}
+
+function playAction(name) {
+  const next = actions[name];
+  if (!next || next === currentAction) return;
+
+  if (currentAction) {
+    currentAction.fadeOut(0.5);
+  }
+  
+  next.reset().fadeIn(0.5).play();
+  currentAction = next;
+  console.log(`Playing animation: ${name}`);
 }
 
 async function loadAvatarAndAnims() {
@@ -167,12 +193,30 @@ async function loadAvatarAndAnims() {
   });
 
   mixer = new THREE.AnimationMixer(vrm.scene);
-  try {
-    const animGltf = await loader.loadAsync(ANIMS_GLB_PATH);
-    if (animGltf.animations.length) {
-      mixer.clipAction(animGltf.animations[0]).play();
+  
+  const animFiles = {
+    idle: ANIMS_GLB_PATH,
+    watch: 'watchAnimation.glb',
+    success: 'successAnimation.glb',
+    frustrated: 'frustratedAnimation.glb',
+    dance: 'DanceAnimation.glb'
+  };
+
+  for (const [key, path] of Object.entries(animFiles)) {
+    try {
+      const animGltf = await loader.loadAsync(path);
+      if (animGltf.animations.length) {
+        const action = mixer.clipAction(animGltf.animations[0]);
+        actions[key] = action;
+        if (key === 'idle') {
+          action.play();
+          currentAction = action;
+        }
+      }
+    } catch (e) {
+      console.warn(`Failed to load animation: ${path}`, e);
     }
-  } catch (e) { console.warn('No animations found'); }
+  }
 }
 
 function updateStatus(txt) {
@@ -288,6 +332,25 @@ function animate() {
   const delta = clock.getDelta();
   if (mixer) mixer.update(delta);
   if (controls) controls.update();
+
+  // --- Idle Variation Logic ---
+  if (!isSpeaking) {
+    idleTimer += delta;
+    if (idleTimer > nextIdleVariation) {
+      // Toggle between idle and watch
+      const nextAnim = (currentAction === actions['idle']) ? 'watch' : 'idle';
+      playAction(nextAnim);
+      idleTimer = 0;
+      nextIdleVariation = 10 + Math.random() * 15;
+    }
+  } else {
+    // If speaking and in a special animation, revert to idle for lip-sync
+    if (currentAction !== actions['idle'] && currentAction !== actions['watch']) {
+      // Keep special animations playing unless they are one-shot? 
+      // For now let's just ensure idle/watch during talk
+    }
+    idleTimer = 0; 
+  }
 
   // --- Auto-Blink Logic ---
   blinkTimer += delta;
