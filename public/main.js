@@ -184,21 +184,18 @@ function updateStatus(txt) {
 async function startConversation() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     updateStatus('Secure context required');
-    alert('Microphone access requires a secure context (HTTPS or localhost). Please ensure you are accessing the site via http://localhost:8080 or https://');
+    alert('Microphone access requires a secure context. Please use localhost:8080.');
     return;
   }
 
   try {
     updateStatus('Connecting...');
     
-    // FETCH THE SECURE SIGNED URL FROM OUR BACKEND
-    // This allows us to start a session without exposing our API Key in the browser
-    const authRes = await fetch('/api/get-signed-url');
-    if (!authRes.ok) throw new Error('Authorization failed');
-    const { signedUrl } = await authRes.json();
+    // BACK TO LOCAL SETUP: Use API key directly to skip permission issues
+    const API_KEY = 'sk_23ecdb027f96e10b22b1b0d818aa39e8966c2fdb731feebf';
 
     conversation = await Conversation.startSession({
-      signedUrl,
+      apiKey: API_KEY, // Use apiKey directly instead of signedUrl
       onConnect: () => {
         updateStatus('Connected');
         const btn = document.getElementById('actionBtn');
