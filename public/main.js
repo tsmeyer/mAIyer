@@ -7,8 +7,6 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // --- CONFIG ---
-const ELEVENLABS_API_KEY = 'sk_23ecdb027f96e10b22b1b0d818aa39e8966c2fdb731feebf'; 
-const AGENT_ID = 'agent_6301kf03t1b2f7e8dtte5dawdask';
 const AVATAR_GLB_PATH = 'avatar.glb';
 const ANIMS_GLB_PATH = 'animations.glb';
 
@@ -193,12 +191,11 @@ async function startConversation() {
   try {
     updateStatus('Connecting...');
     
-    // Auth for prototype
-    const baseUrl = 'wss://api.elevenlabs.io/v1/convai/conversation';
-    const params = new URLSearchParams({ agent_id: AGENT_ID,
-                                include_alignment_metadata: true  });
-    if (ELEVENLABS_API_KEY) params.set('api_key', ELEVENLABS_API_KEY);
-    const signedUrl = `${baseUrl}?${params.toString()}`;
+    // FETCH THE SECURE SIGNED URL FROM OUR BACKEND
+    // This allows us to start a session without exposing our API Key in the browser
+    const authRes = await fetch('/api/get-signed-url');
+    if (!authRes.ok) throw new Error('Authorization failed');
+    const { signedUrl } = await authRes.json();
 
     conversation = await Conversation.startSession({
       signedUrl,
