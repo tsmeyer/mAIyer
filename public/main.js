@@ -25,7 +25,7 @@ renderer.toneMappingExposure = 1.0;
 
 // Mouse Controls for Rotation
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableZoom = false; // Keep current zoom
+controls.enableZoom = true; // Zooming enabled to see feet
 controls.enablePan = false;  // Keep focus centered
 controls.enableDamping = true;
 controls.target.set(0, 1.4, 0); // Rotate around the face/upper body
@@ -140,6 +140,17 @@ window.addEventListener('keydown', async (e) => {
     try {
       await conversation.sendUserMessage("Please respond in English from now on.");
     } catch (e) { console.error('Language switch error:', e); }
+  }
+
+  // Fullscreen Hotkey
+  if (e.key.toLowerCase() === 'f') {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
   }
 
   // Animation Hotkeys
